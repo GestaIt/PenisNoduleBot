@@ -5,7 +5,7 @@
 <p>The bot comes with 3 features right out of the box, but allows for easy implementation for any other features.</p>
 <ol>
 <li>Promotes anti-racism & anti-homophobia through the use of Discord messages.</li>
-<li>Degrades any individual that sends a profane message.</li>
+<li>Degrades any individual that sends profane messages.</li>
 <li>Greets new users with positive messages.</li>
 </ol>
 <p>However, these aren't the only things that PenisNodule has to offer...</p>
