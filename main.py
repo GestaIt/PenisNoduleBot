@@ -11,12 +11,13 @@ import time
 
 import discord
 
+import pickup_lines
+
 # This array will contain people of have chatted, along with their previous chat time.
 member_chats: dict[str: float] = {}
 
 # Create our config parser.
-config: configparser.RawConfigParser = configparser.RawConfigParser(
-    converters={'list': lambda x: [i.strip() for i in x.split(',')]})
+config: configparser.RawConfigParser = configparser.RawConfigParser()
 config.read("config.properties")  # Read our properties file.
 
 
@@ -37,6 +38,8 @@ def contains_profanities(message: str) -> (bool, str):
 def main() -> None:
     messages_per_minute: float = config.getfloat("BotConfig", "messages-per-minute")
     inactive_time: float = config.getfloat("BotConfig", "inactive-label-minute-time")
+    should_send_pickup_lines: bool = config.getboolean("BotConfig", "pickup-lines")
+    print(should_send_pickup_lines)
     channel_id: int = config.getint("BotConfig", "channel-id")
     discord_token: str = config.get("Discord", "discord.token")
     messages: [str] = [i.rstrip(",\\\\") for i in config.get("BotConfig", "messages").split("\n")]
@@ -92,6 +95,10 @@ def main() -> None:
         async def on_message(self, message: discord.Message):
             current_time: float = time.time()
 
+            # If they are replying to us, respond with a random pickup line.
+            if self.user.mentioned_in(message) and should_send_pickup_lines:
+                await message.reply(pickup_lines.generate_ponly_line())
+
             # If the message is from us, or if the message content is empty, exit the method.
             if message.author == self.user or message.content == "" or message.author.bot:
                 return
@@ -104,7 +111,7 @@ def main() -> None:
                 print(f"Found a new person chatting, {message.author.name}!")
 
                 # Say a friendly greeting.
-                await message.reply(f"Welcome to the chat, <@{message.author.name}>")
+                await message.reply(f"Welcome to the chat, <@{message.author.id}>!")
 
             # If the person hasn't chatted in a while, make sure to welcome them.
             # If it's -1, then the person hasn't chatted yet.
