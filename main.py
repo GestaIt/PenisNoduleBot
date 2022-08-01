@@ -11,75 +11,37 @@ import time
 
 import discord
 
-# This array will contain global messages.
-MESSAGES: [str] = [
-    "Don't be racist or homophobic or I'll tell the moderators.",
-    "If I catch you being homophobic or racist... YOU. ARE. DEAD... NO SECOND CHANCES.",
-    "Don't you dare be racist or homophobic. We will not tolerate it. EVER.",
-    "Din. Din. Din",
-    "Has anyone watched the hit show *Lost* by ABC?",
-    "It sure is a nice day today!"
-]
-
-# This array will contain messages that will be used whenever someone says a slur.
-# These can be formatted with information about the slur.
-# Current formats are {mention}.
-PROFANE_MESSAGES: [str] = [
-    "Watch your mouth, {mention}.",
-    "I'm telling a moderator that you said that.",
-    "That will be reported at once.",
-    "It's not very cool to use language of that nature.",
-    "I hope you realize the damage you're doing by using that sort of language."
-]
-
-# This array will contain messages that are used to welcome new people to the chat.
-# They can be formatted with the following tags: {mention}, {seconds}, {minutes}, {hours}.
-NEW_COMER_MESSAGES: [str] = [
-    "Welcome to the chat, {mention}!",
-    "Long time no see, {mention}! You haven't spoke in {seconds} seconds!",
-    "Holy shixt, {mention}! You have spoke in {minutes} minutes!"
-]
-
 # This array will contain people of have chatted, along with their previous chat time.
 member_chats: dict[str: float] = {}
 
 # Create our config parser.
-config: configparser.RawConfigParser = configparser.RawConfigParser()
+config: configparser.RawConfigParser = configparser.RawConfigParser(
+    converters={'list': lambda x: [i.strip() for i in x.split(',')]})
 config.read("config.properties")  # Read our properties file.
 
 
 # This method will check a message for profanities.
 # Possible profanities are contained in profanities.txt.
-def contains_profanities(message: str) -> bool:
+def contains_profanities(message: str) -> (bool, str):
     lower_message: str = message.lower()
 
     with open("profanities.txt") as file:
         for word in file.readlines():
             if word.lower().strip() in lower_message:
-                return True
+                return True, word
 
-        return False
-
-
-# This method will fetch the users input in a numerical form.
-# It uses the provided message as the first parameter for the input method.
-def get_numerical_input(message: str) -> float:
-    their_input: str = input(message)
-
-    # We'll use a simple try statement.
-    # If it fails, we will tell the program to recursively call this method again.
-    try:
-        return float(their_input)
-    except ValueError:
-        return get_numerical_input(message)
+        return False, ""
 
 
 # This method is the entrypoint.
 def main() -> None:
-    messages_per_minute: float = get_numerical_input("How many times should we send the message per minute? ")
-    inactive_time: float = get_numerical_input("How many minutes should it be for a person to be labeled as inactive? ")
-    channel_id: float = get_numerical_input("What is the channel id? ")
+    messages_per_minute: float = config.getfloat("BotConfig", "messages-per-minute")
+    inactive_time: float = config.getfloat("BotConfig", "inactive-label-minute-time")
+    channel_id: int = config.getint("BotConfig", "channel-id")
     discord_token: str = config.get("Discord", "discord.token")
+    messages: [str] = [i.rstrip(",\\\\") for i in config.get("BotConfig", "messages").split("\n")]
+    profane_messages: [str] = [i.rstrip(",\\\\") for i in config.get("BotConfig", "profane-messages").split("\n")]
+    new_comer_messages: [str] = [i.rstrip(",\\\\") for i in config.get("BotConfig", "new-comer-messages").split("\n")]
 
     # We'll just cache the time since we don't want to be doing calculations every single loop.
     sleep_time: float = (1 / messages_per_minute) * 60
@@ -99,7 +61,7 @@ def main() -> None:
             print(f"Sending message #{self.counter}!")
 
             # Fetch a random message from the list.
-            current_message: str = random.choice(MESSAGES)
+            current_message: str = random.choice(messages)
 
             # Send "hi", then the message.
             await self.channel.send("Hi.")
@@ -114,7 +76,7 @@ def main() -> None:
             print("Successfully logged on as", self.user)
 
             # Fetch the channel that we'll be sending the messages in.
-            self.channel: discord.TextChannel = self.get_channel(int(channel_id))  # The id is for general.
+            self.channel: discord.TextChannel = self.get_channel(channel_id)
 
             # Make sure the channel exists.
             if self.channel is None:
@@ -155,21 +117,25 @@ def main() -> None:
                 minutes_between: int = int(seconds_between / 60)
 
                 # Welcome them!
-                await message.reply(random.choice(NEW_COMER_MESSAGES).format(
+                await message.reply(random.choice(new_comer_messages).format(
                     mention=f"<@{message.author.id}>",
                     seconds=seconds_between,
                     minutes=minutes_between
                 ))
 
-            # Check if the message contains profanities.
-            if contains_profanities(message.content):
+            # This method will check if the users' message contains profanities.
+            profanity_check: (bool, str) = contains_profanities(message.content)
+
+            # If profanity_check[0] is True, the message contains profanities.
+            if profanity_check[0]:
                 # Log the message.
                 print(f"Successfully caught a bad message from {message.author.name}.")
 
                 # If the message does contain profanities, reply with one of the random messages.
                 # Make sure to format the message.
-                await message.reply(random.choice(PROFANE_MESSAGES).format(
-                    mention=f"<@{message.author.id}>"
+                await message.reply(random.choice(profane_messages).format(
+                    mention=f"<@{message.author.id}>",
+                    slur=profanity_check[1]  # The second value is the slur that they used.
                 ))
 
             # Cache the persons message.
