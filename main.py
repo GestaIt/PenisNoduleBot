@@ -78,6 +78,7 @@ def get_numerical_input(message: str) -> float:
 def main() -> None:
     messages_per_minute: float = get_numerical_input("How many times should we send the message per minute? ")
     inactive_time: float = get_numerical_input("How many minutes should it be for a person to be labeled as inactive? ")
+    channel_id: float = get_numerical_input("What is the channel id? ")
     discord_token: str = config.get("Discord", "discord.token")
 
     # We'll just cache the time since we don't want to be doing calculations every single loop.
@@ -113,7 +114,7 @@ def main() -> None:
             print("Successfully logged on as", self.user)
 
             # Fetch the channel that we'll be sending the messages in.
-            self.channel: discord.TextChannel = self.get_channel(996572240151855205)  # The id is for general.
+            self.channel: discord.TextChannel = self.get_channel(int(channel_id))  # The id is for general.
 
             # Make sure the channel exists.
             if self.channel is None:
@@ -134,14 +135,23 @@ def main() -> None:
                 return
 
             # Find the last time the person has chatted.
-            previous_time: float = message.author.id in member_chats and member_chats[message.author.id] or 0
+            previous_time: float = message.author.id in member_chats and member_chats[message.author.id] or -1
+
+            # Make sure to greet the person if they haven't sent a message yet.
+            if previous_time == -1:
+                print(f"Found a new person chatting, {message.author.name}!")
+
+                # Say a friendly greeting.
+                await message.reply(f"Welcome to the chat, <@{message.author.name}>")
 
             # If the person hasn't chatted in a while, make sure to welcome them.
-            if previous_time + (inactive_time * 60) < current_time:
+            # If it's -1, then the person hasn't chatted yet.
+            if previous_time + (inactive_time * 60) < current_time and previous_time != -1:
                 print(f"Just welcomed a new person, {message.author.name}!")
 
                 # Figure out the seconds between the previous time and this time.
-                seconds_between: int = int(current_time - previous_time)  # Casting it to an int will remove decimals.
+                seconds_between: int = int(current_time - previous_time)  # Casting it to an int will remove decimal
+                # points.
                 minutes_between: int = int(seconds_between / 60)
 
                 # Welcome them!
