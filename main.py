@@ -39,7 +39,6 @@ def main() -> None:
     messages_per_minute: float = config.getfloat("BotConfig", "messages-per-minute")
     inactive_time: float = config.getfloat("BotConfig", "inactive-label-minute-time")
     should_send_pickup_lines: bool = config.getboolean("BotConfig", "pickup-lines")
-    print(should_send_pickup_lines)
     channel_id: int = config.getint("BotConfig", "channel-id")
     discord_token: str = config.get("Discord", "discord.token")
     messages: [str] = [i.rstrip(",\\\\") for i in config.get("BotConfig", "messages").split("\n")]
