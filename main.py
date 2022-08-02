@@ -56,7 +56,44 @@ def main() -> None:
             self.counter: int = 0
             self.channel: discord.TextChannel | None = None
 
-        async def send_message(self):
+        # This method is a proxy between the send method and our implementation.
+        # It'll add the "is typing" notifier to the channel.
+        # noinspection PyMethodMayBeStatic
+        async def send_message(self, channel: discord.TextChannel, contents: str):
+            try:
+                # Apply the "is typing" to the channel.
+                async with channel.typing():
+                    # We shall dynamically sleep based on the size of the message.
+                    await asyncio.sleep((len(contents) / 30) + 3)
+
+                # Incase our previous typing method was intercepted by another.
+                # This wouldn't be a problem if we didn't use dynamic sleeping.
+                await channel.trigger_typing()
+
+                # After, send the message.
+                await channel.send(contents)
+            except discord.errors.Forbidden:
+                print("Failed to send message in #" + channel.name)
+
+        # This method is a proxy between the reply method and our implementation.
+        # It'll add the "is typing" notifier while respond to the provided message.
+        # noinspection PyMethodMayBeStatic
+        async def reply_to_message(self, message: discord.Message, contents: str):
+            try:
+                # Apply the "is typing" to the channel.
+                async with message.channel.typing():
+                    await asyncio.sleep((len(contents) / 30) + 3)
+
+                # Incase our previous typing method was intercepted by another.
+                # This wouldn't be a problem if we didn't use dynamic sleeping.
+                await message.channel.trigger_typing()
+
+                # After, send the message.
+                await message.reply(contents)
+            except discord.errors.Forbidden:
+                print("Failed to reply to message in #" + message.channel.name)
+
+        async def send_anti_message(self):
             # Increment our counter field.
             self.counter += 1
 
@@ -66,13 +103,13 @@ def main() -> None:
             current_message: str = random.choice(messages)
 
             # Send "hi", then the message.
-            await self.channel.send("Hi.")
+            await self.send_message(self.channel, "Hi.")
 
             # Sleep for an amount of seconds to make us look human.
-            await asyncio.sleep(3)
+            await asyncio.sleep(1)
 
             # Finally, send the selected message.
-            await self.channel.send(current_message)
+            await self.send_message(self.channel, current_message)
 
         async def on_ready(self):
             print("Successfully logged on as", self.user)
@@ -89,14 +126,14 @@ def main() -> None:
                 await asyncio.sleep(sleep_time)
 
                 # This method will send the message for us asynchronously.
-                await self.send_message()
+                await self.send_anti_message()
 
         async def on_message(self, message: discord.Message):
             current_time: float = time.time()
 
             # If they are replying to us, respond with a random pickup line.
             if self.user.mentioned_in(message) and should_send_pickup_lines:
-                await message.reply(pickup_lines.generate_ponly_line())
+                await self.reply_to_message(message, pickup_lines.generate_ponly_line())
 
             # If the message is from us, or if the message content is empty, exit the method.
             if message.author == self.user or message.content == "" or message.author.bot:
@@ -110,7 +147,7 @@ def main() -> None:
                 print(f"Found a new person chatting, {message.author.name}!")
 
                 # Say a friendly greeting.
-                await message.reply(f"Welcome to the chat, <@{message.author.id}>!")
+                await self.reply_to_message(message, f"Welcome to the chat, <@{message.author.id}>!")
 
             # If the person hasn't chatted in a while, make sure to welcome them.
             # If it's -1, then the person hasn't chatted yet.
@@ -123,7 +160,7 @@ def main() -> None:
                 minutes_between: int = int(seconds_between / 60)
 
                 # Welcome them!
-                await message.reply(random.choice(new_comer_messages).format(
+                await self.reply_to_message(message, random.choice(new_comer_messages).format(
                     mention=f"<@{message.author.id}>",
                     seconds=seconds_between,
                     minutes=minutes_between
@@ -139,7 +176,7 @@ def main() -> None:
 
                 # If the message does contain profanities, reply with one of the random messages.
                 # Make sure to format the message.
-                await message.reply(random.choice(profane_messages).format(
+                await self.reply_to_message(message, random.choice(profane_messages).format(
                     mention=f"<@{message.author.id}>",
                     slur=profanity_check[1]  # The second value is the slur that they used.
                 ))
