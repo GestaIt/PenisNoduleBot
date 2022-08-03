@@ -92,6 +92,7 @@ def main() -> None:
                 await message.reply(contents)
             except discord.errors.Forbidden:
                 print("Failed to reply to message in #" + message.channel.name)
+                await message.author.send("Hello! I'm timed out! " + contents)
 
         async def send_anti_message(self):
             # Increment our counter field.
