@@ -92,6 +92,9 @@ def main() -> None:
                 await message.reply(contents)
             except discord.errors.Forbidden:
                 print("Failed to reply to message in #" + message.channel.name)
+
+                # If we are timed out, respond to them in messages.
+                await message.author.create_dm()
                 await message.author.send("Hello! I'm timed out! " + contents)
 
         async def send_anti_message(self):
